@@ -17,18 +17,24 @@ endif(NOT root_path)
 #include Eigen
 include_directories(${root_path}/ext/eigen)
 
-#include hearder and source files in /src
+#include header and source files in /src
 file(GLOB_RECURSE src_cpp ${root_path}/src/*.cpp)
 file(GLOB_RECURSE src_h ${root_path}/src/*.h)
-list(APPEND src_files ${src_cpp} ${src_h})
-source_group("src" FILES ${src_cpp} ${src_h})
+file(GLOB_RECURSE src_frag ${root_path}/src/*.frag)
+file(GLOB_RECURSE src_vert ${root_path}/src/*.vert)
+file(GLOB_RECURSE src_glsl ${root_path}/src/*.glsl)
+list(APPEND src_files ${src_cpp} ${src_h} ${src_frag} ${src_vert} ${src_glsl})
+source_group("src" FILES ${src_cpp} ${src_h} ${src_frag} ${src_vert} ${src_glsl})
 include_directories(${root_path}/src)
 	
-#include hearder and source files in /proj/a*
+#include header and source files in /proj/a*
 file(GLOB_RECURSE proj_cpp ${proj_src_path}/*.cpp)
 file(GLOB_RECURSE proj_h ${proj_src_path}/*.h)
-list(APPEND src_files ${proj_cpp} ${proj_h})
-source_group("proj" FILES ${proj_cpp} ${proj_h})
+file(GLOB_RECURSE proj_frag ${proj_src_path}/*.frag)
+file(GLOB_RECURSE proj_vert ${proj_src_path}/*.vert)
+file(GLOB_RECURSE proj_glsl ${proj_src_path}/*.glsl)
+list(APPEND src_files ${proj_cpp} ${proj_h} ${proj_frag} ${proj_vert} ${proj_glsl})
+source_group("proj" FILES ${proj_cpp} ${proj_h} ${proj_frag} ${proj_vert} ${proj_glsl})
 include_directories(${proj_path}/src)
 
 #include glm

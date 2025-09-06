@@ -218,7 +218,7 @@ protected:
 		opengl_edges->Initialize();
 		Set_Line_Width(opengl_edges, 3.f);
 		Set_Shading_Mode(opengl_edges, ShadingMode::None);
-		Set_Color(opengl_edges, OpenGLColor(.1f, 1.f, .1f, 1.f));
+		Set_Color(opengl_edges, OpenGLColor(0.f, 0.f, 0.f, 1.f));
 	}
 };
 

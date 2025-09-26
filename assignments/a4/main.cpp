@@ -23,14 +23,15 @@
 #define CLOCKS_PER_SEC 100000
 #endif
 
-class ShaderDriver : public OpenGLViewer {
-    std::vector<OpenGLTriangleMesh*> mesh_object_array;
+class ShaderDriver : public OpenGLViewer
+{
+    std::vector<OpenGLTriangleMesh *> mesh_object_array;
     clock_t startTime;
 
 public:
     void Create_Bunny_Scene()
     {
-        Create_Background(OpenGLColor(0.1f, 0.1f, 0.1f, 1.f), OpenGLColor(0.1f, 0.1f, .3f, 1.f));   //// add background
+        Create_Background(OpenGLColor(0.1f, 0.1f, 0.1f, 1.f), OpenGLColor(0.1f, 0.1f, .3f, 1.f)); //// add background
 
         auto bunny = Add_Obj_Mesh_Object("bunny.obj");
         //// set transform
@@ -77,10 +78,24 @@ public:
 
     void Create_Shining_Scene()
     {
-        Create_Background(OpenGLColor(0.1f, 0.1f, 0.1f, 1.f), OpenGLColor(0.1f, 0.1f, .3f, 1.f));   //// add background
+        Create_Background(OpenGLColor(0.1f, 0.1f, 0.1f, 1.f), OpenGLColor(0.1f, 0.1f, .3f, 1.f)); //// add background
 
-        //// Step 7: Add your customized mesh objects and specify their transform and material properties by mimicking Create_Bunny_Scene() 
+        //// Step 7: Add your customized mesh objects and specify their transform and material properties by mimicking Create_Bunny_Scene()
         /* Your implementation starts */
+
+        auto jojo = Add_Obj_Mesh_Object("jojo.obj");
+        //// set transform for jojo
+        Matrix4f t1;
+        t1 << 1.5, 0., 0., 0., // Scale up by 1.5x
+            0., 1.5, 0., 0.,
+            0., 0., 1.5, 0.,
+            0., 0., 0., 1.;
+        jojo->Set_Model_Matrix(t1);
+        //// set material properties for jojo - deep purple metallic look
+        jojo->Set_Ka(Vector3f(0.05f, 0.03f, 0.08f)); // Very dark with slight purple ambient
+        jojo->Set_Kd(Vector3f(0.1f, 0.06f, 0.15f));  // Dark with subtle purple diffuse
+        jojo->Set_Ks(Vector3f(4.f, 3.f, 6.f));       // Subtle purple-tinted specular
+        jojo->Set_Shininess(256.f);
 
         /* Your implementation ends */
     }
@@ -88,11 +103,12 @@ public:
     //// Step 7: Comment out Create_Bunny_Scene() and uncomment Create_Shining_Scene() for your customized scene.
     virtual void Initialize_Data()
     {
-        Create_Bunny_Scene();               //// TODO: comment out this line for your customized scene
-        //Create_Shining_Scene();           //// TODO: uncomment this line for your customized scene
+        // Create_Bunny_Scene(); //// TODO: comment out this line for your customized scene
+        Create_Shining_Scene(); //// TODO: uncomment this line for your customized scene
 
         OpenGLShaderLibrary::Instance()->Add_Shader_From_File("a4_vert.vert", "a4_frag.frag", "a4_shader");
-        for (auto& mesh_obj : mesh_object_array) {
+        for (auto &mesh_obj : mesh_object_array)
+        {
             mesh_obj->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("a4_shader"));
             Set_Polygon_Mode(mesh_obj, PolygonMode::Fill);
             Set_Shading_Mode(mesh_obj, ShadingMode::Phong);
@@ -101,20 +117,23 @@ public:
         }
     }
 
-    virtual void Initialize() {
+    virtual void Initialize()
+    {
         draw_axes = false;
         startTime = clock();
         OpenGLViewer::Initialize();
     }
 
-    void Create_Background(const OpenGLColor color1 = OpenGLColor::Black(), const OpenGLColor color2 = OpenGLColor(.01f, .01f, .2f, 1.f)) {
+    void Create_Background(const OpenGLColor color1 = OpenGLColor::Black(), const OpenGLColor color2 = OpenGLColor(.01f, .01f, .2f, 1.f))
+    {
         auto bg = Add_Interactive_Object<OpenGLBackground>();
         bg->Set_Color(color1, color2);
         bg->Initialize();
     }
 
     ////This function adds a mesh object from an obj file
-    OpenGLTriangleMesh* Add_Obj_Mesh_Object(std::string obj_file_name) {
+    OpenGLTriangleMesh *Add_Obj_Mesh_Object(std::string obj_file_name)
+    {
         auto mesh_obj = Add_Interactive_Object<OpenGLTriangleMesh>();
         Array<std::shared_ptr<TriangleMesh<3>>> meshes;
         Obj::Read_From_Obj_File(obj_file_name, meshes);
@@ -125,7 +144,7 @@ public:
         return mesh_obj;
     }
 
-    OpenGLTriangleMesh* Add_Sphere_Object(const double radius = 1.)
+    OpenGLTriangleMesh *Add_Sphere_Object(const double radius = 1.)
     {
         auto mesh_obj = Add_Interactive_Object<OpenGLTriangleMesh>();
         Initialize_Sphere_Mesh(radius, &mesh_obj->mesh, 3);
@@ -135,19 +154,23 @@ public:
     }
 
     //// Go to next frame
-    virtual void Toggle_Next_Frame() {
-        for (auto& mesh_obj : mesh_object_array) {
+    virtual void Toggle_Next_Frame()
+    {
+        for (auto &mesh_obj : mesh_object_array)
+        {
             mesh_obj->setTime(GLfloat(clock() - startTime) / CLOCKS_PER_SEC);
         }
         OpenGLViewer::Toggle_Next_Frame();
     }
 
-    virtual void Run() {
+    virtual void Run()
+    {
         OpenGLViewer::Run();
     }
 };
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[])
+{
     ShaderDriver driver;
     driver.Initialize();
     driver.Run();

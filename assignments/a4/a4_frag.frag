@@ -28,8 +28,7 @@ in vec3 vtx_position;       /* vertex position (in world space) */
 out vec4 frag_color;        /* fragment color */
 
 /* this struct define the properties of a point light source */
-struct Light 
-{
+struct Light {
     vec3 position;          /* light position */
     vec3 Ia;                /* ambient intensity */
     vec3 Id;                /* diffuse intensity */
@@ -41,13 +40,12 @@ struct Light
 //// In this function, you will implement the conversion from a normal vector to a color
 //// For each component of the input, you need to map its value from [-1, 1] to [0, 1] in the output 
 
-vec4 shading_normal() 
-{
+vec4 shading_normal() {
     vec3 _normal = normalize(vtx_normal);
-    
-    /* your implementation starts */
 
-    return vec4(0.f,0.f,0.f,1.f);
+    /* your implementation starts */
+    vec3 color = (_normal + vec3(1.0)) * 0.5;
+    return vec4(color, 1.);
     /* your implementation ends */
 }
 
@@ -62,11 +60,10 @@ vec4 shading_normal()
 //// light: the light struct
 /////////////////////////////////////////////////////
 
-vec4 shading_ambient(Light light) 
-{
+vec4 shading_ambient(Light light) {
     /* your implementation starts */
-    
-    return vec4(0.f,0.f,0.f,1.f);
+
+    return vec4(ka * light.Ia, 1.);
     /* your implementation ends */
 }
 
@@ -84,11 +81,12 @@ vec4 shading_ambient(Light light)
 //// n: normal at the point
 /////////////////////////////////////////////////////
 
-vec4 shading_lambertian(Light light, vec3 p, vec3 s, vec3 n) 
-{
+vec4 shading_lambertian(Light light, vec3 p, vec3 s, vec3 n) {
     /* your implementation starts */
+    vec3 l = normalize(s - p);
+    vec3 normal = normalize(n);
 
-    return vec4(0.f,0.f,0.f,1.f);
+    return vec4(ka * light.Ia + kd * light.Id * max(0, dot(l, normal)), 1.);
     /* your implementation ends */
 }
 
@@ -107,11 +105,14 @@ vec4 shading_lambertian(Light light, vec3 p, vec3 s, vec3 n)
 //// n: normal at the point
 /////////////////////////////////////////////////////
 
-vec4 shading_phong(Light light, vec3 e, vec3 p, vec3 s, vec3 n) 
-{
+vec4 shading_phong(Light light, vec3 e, vec3 p, vec3 s, vec3 n) {
     /* your implementation starts */
-    
-    return vec4(0.f,0.f,0.f,1.f);
+    vec3 l = normalize(s - p);
+    vec3 normal = normalize(n);
+    vec3 v = normalize(e - p);
+    vec3 r = reflect(-l, normal);
+
+    return vec4(shading_lambertian(light, p, s, n).xyz + ks * light.Is * pow(max(0, dot(v, r)), shininess), 1.);
     /* your implementation ends */
 }
 
@@ -122,28 +123,22 @@ vec4 shading_phong(Light light, vec3 e, vec3 p, vec3 s, vec3 n)
 //// Keep in mind that a GLSL matrix is column major by default
 /////////////////////////////////////////////////////
 
-Light get_spinny_light(Light light) 
-{
+Light get_spinny_light(Light light) {
     float theta = iTime * .8;
 
     /* modify the following matrix to create a counterclockwise rotation with angle theta */
     /* notice that in GLSL the matrix is column-major by default! */
-    
+
     /* your implementation starts */
 
-    mat4 light_model_mtx = 
-        mat4(1., 0., 0., 0., 
-             0., 1., 0., 0., 
-             0., 0., 1., 0., 
-             0., 0., 0., 1.);
-    
+    mat4 light_model_mtx = mat4(cos(theta), sin(theta), 0, 0, -sin(theta), cos(theta), 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+
     /* your implementation ends */
 
     return Light((light_model_mtx * vec4(light.position, 1)).xyz, light.Ia, light.Id, light.Is);
 }
 
-void main() 
-{
+void main() {
     //// we have one light source in the scene by default
     const Light light1 = Light(/*position*/ vec3(3, 1, 3), 
                                 /*Ia*/ vec3(0.1, 0.1, 0.1), 
@@ -159,7 +154,7 @@ void main()
     //// Step 1: visualize normal vectors as colors
     //// Your task is to implement the shading_normal function
 
-    frag_color = shading_normal();
+    // frag_color = shading_normal();
 
     //// Step 2: ambient shading
     //// Your task is to implement the shading_normal function 
@@ -190,19 +185,23 @@ void main()
     //// Uncomment the following line, declare a new light, and add its contribution to frag_color.
 
     /* Your implementation starts here */
-    
-    
-    // frag_color = shading_phong(light1, e, p, s1, n);
-    
+
+    // const Light light2 = Light(/*position*/ vec3(-3, 1, 3),
+    //                             /*Ia*/ vec3(0.05, 0.02, 0.03),
+    //                             /*Id*/ vec3(0.4, 0.2, 0.3),
+    //                             /*Is*/ vec3(0.4, 0.2, 0.3));
+
+    // frag_color = shading_phong(light1, e, p, s1, n) + shading_phong(light2, e, p, light2.position, n);
+
     /* Your implementation ends here */
 
     //// Step 6: dynamic light source
     //// Your task is to calculate the rotation of the light source around the z axis, with the specified angular velocity 
     //// Your implementation will take place in the function get_spinny_light
     //// After implementing rotation in get_spinny_light, uncomment the following two lines and press key 'p' to start the animation
-    
-    // Light spinnyLight = get_spinny_light(light1);
-    // frag_color = shading_phong(spinnyLight, e, p, spinnyLight.position, n);
+
+    Light spinnyLight = get_spinny_light(light1);
+    frag_color = shading_phong(spinnyLight, e, p, spinnyLight.position, n);
 
     //// Step 7: your customized lighting effect
     //// Implement your customized lighting effects on your customized mesh objects 

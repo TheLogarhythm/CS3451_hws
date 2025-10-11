@@ -28,8 +28,7 @@ uniform sampler2D tex_normal;   /* texture sampler for normal vector */
 /*output variables*/
 out vec4 frag_color;
 
-struct Light 
-{
+struct Light {
     vec3 position;          /* light position */
     vec3 Ia;                /* ambient intensity */
     vec3 Id;                /* diffuse intensity */
@@ -45,7 +44,7 @@ const Light light1 = Light(/*position*/ vec3(3, 1, 3),
 const Light light2 = Light(/*position*/ vec3(0, 0, -5), 
                             /*Ia*/ vec3(0.1, 0.1, 0.1), 
                             /*Id*/ vec3(0.9, 0.9, 0.9), 
-                            /*Is*/ vec3(0.5, 0.5, 0.5)); 
+                            /*Is*/ vec3(0.5, 0.5, 0.5));
 const Light light3 = Light(/*position*/ vec3(-5, 1, 3), 
                             /*Ia*/ vec3(0.1, 0.1, 0.1), 
                             /*Id*/ vec3(0.9, 0.9, 0.9), 
@@ -58,14 +57,17 @@ const Light light3 = Light(/*position*/ vec3(-5, 1, 3),
 //// We provide a reference figure in the assignment document; but you are free to choose your own grid size
 /////////////////////////////////////////////////////
 
-vec4 shading_texture_with_checkerboard() 
-{
+vec4 shading_texture_with_checkerboard() {
     vec3 color = vec3(0.0);     //// we set the default color to be black, update its value in your implementation below
     vec2 uv = vtx_uv;           //// the uv coordinates you need to calculate the checkerboard color
 
     /* your implementation starts */
-    
-
+    float scale = 10.0; // Scale factor to control the size of the checkerboard squares
+    float u_scaled = uv.x * scale;
+    float v_scaled = uv.y * scale;
+    if(mod(floor(u_scaled) + floor(v_scaled), 2.0) == 0.0) {
+        color = vec3(1.0, 1.0, 1.0); // White color for even squares
+    }
     /* your implementation ends */
 
     return vec4(color, 1.0);
@@ -78,14 +80,12 @@ vec4 shading_texture_with_checkerboard()
 //// and then assign this texture value to the output color
 /////////////////////////////////////////////////////
 
-vec4 shading_texture_with_color() 
-{
+vec4 shading_texture_with_color() {
     vec4 color = vec4(0.0);     //// we set the default color to be black, update its value in your implementation below
     vec2 uv = vtx_uv;           //// the uv coordinates you need to read texture values
 
     /* your implementation starts */
-    
-
+    color = texture(tex_color, uv);
     /* your implementation ends */
 
     return color;
@@ -109,14 +109,20 @@ vec4 shading_texture_with_color()
 //// n: normal at the point
 /////////////////////////////////////////////////////
 
-vec4 shading_texture_with_phong(Light light, vec3 e, vec3 p, vec3 s, vec3 n) 
-{
+vec4 shading_texture_with_phong(Light light, vec3 e, vec3 p, vec3 s, vec3 n) {
     vec4 color = vec4(0.0);                                 //// we set the default color to be black, update its value in your implementation below
     vec3 tex_color = shading_texture_with_color().rgb;      //// the texture value read from your previously implemented function; you need to use this value in your phong shading model
-    
-    /* your implementation starts */
-    
 
+    /* your implementation starts */
+    vec3 l = normalize(s - p); // Light direction
+    vec3 v = normalize(e - p); // View direction
+    vec3 r = reflect(-l, n);   // Reflection direction
+
+    vec3 ambient = light.Ia * ka;
+    vec3 diffuse = light.Id * kd * max(dot(n, l), 0.0) * tex_color;
+    vec3 specular = light.Is * ks * pow(max(dot(r, v), 0.0), shininess);
+
+    color = vec4(ambient + diffuse + specular, 1.0);
     /* your implementation ends */
 
     return color;
@@ -124,15 +130,12 @@ vec4 shading_texture_with_phong(Light light, vec3 e, vec3 p, vec3 s, vec3 n)
 
 //// This function calls your shading_texture_with_phong function with the three declared light sources
 //// No implementation requirement for this function
-vec4 shading_texture_with_lighting()
-{
+vec4 shading_texture_with_lighting() {
     vec3 e = position.xyz;              //// eye position
     vec3 p = vtx_position;              //// surface position
     vec3 n = normalize(vtx_normal);     //// normal vector
 
-    vec4 color = shading_texture_with_phong(light1, e, p, light1.position, n) 
-               + shading_texture_with_phong(light2, e, p, light2.position, n)
-               + shading_texture_with_phong(light3, e, p, light3.position, n);
+    vec4 color = shading_texture_with_phong(light1, e, p, light1.position, n) + shading_texture_with_phong(light2, e, p, light2.position, n) + shading_texture_with_phong(light3, e, p, light3.position, n);
     return color;
 }
 
@@ -149,15 +152,13 @@ vec4 shading_texture_with_lighting()
 //// Make sure you normalize the vector before returning it
 /////////////////////////////////////////////////////
 
-vec3 calc_bitangent(vec3 N, vec3 T) 
-{
+vec3 calc_bitangent(vec3 N, vec3 T) {
     vec3 B = vec3(0.0);     //// the bitangent vector you need to calculate
 
     /* your implementation starts */
-    
-
+    B = normalize(cross(N, T));
     /* your implementation ends */
-    
+
     return B;
 }
 
@@ -166,13 +167,11 @@ vec3 calc_bitangent(vec3 N, vec3 T)
 //// In this function, you will assemble the TBN matrix using the T, B, N vectors, with each vector as a column of the matrix
 /////////////////////////////////////////////////////
 
-mat3 calc_TBN_matrix(vec3 T, vec3 B, vec3 N) 
-{
+mat3 calc_TBN_matrix(vec3 T, vec3 B, vec3 N) {
     mat3 TBN = mat3(0.0);   //// the TBN matrix you need to calculate
 
     /* your implementation starts */
-
-
+    TBN = mat3(T, B, N);
     /* your implementation ends */
 
     return TBN;
@@ -186,14 +185,13 @@ mat3 calc_TBN_matrix(vec3 T, vec3 B, vec3 N)
 //// Keep in mind that the texture() function returns a vec4 by default.
 /////////////////////////////////////////////////////
 
-vec3 read_normal_texture() 
-{
+vec3 read_normal_texture() {
     vec3 normal = vec3(0.0);    //// the normal vector you need to update
     vec2 uv = vtx_uv;           //// the uv coordinates you need to 
 
     /* your implementation starts */
-    
-
+    vec3 tex_normal = texture(tex_normal, uv).rgb;
+    normal = normalize(tex_normal * 2.0 - 1.0);
     /* your implementation ends */
 
     return normal;
@@ -204,15 +202,13 @@ vec3 read_normal_texture()
 //// In this function, you will multiply the TBN matrix with the remapped normal read from the normal texture to get the perturbed normal
 /////////////////////////////////////////////////////
 
-vec3 calc_perturbed_normal(mat3 TBN, vec3 normal) 
-{
+vec3 calc_perturbed_normal(mat3 TBN, vec3 normal) {
     vec3 perturbed_normal = vec3(0.0);
-    
+
     /* your implementation starts */
-
-
+    perturbed_normal = normalize(TBN * normal);
     /* your implementation ends */
-    
+
     return perturbed_normal;
 }
 
@@ -227,8 +223,7 @@ vec3 calc_perturbed_normal(mat3 TBN, vec3 normal)
 //// The perturbed normal will then be used in the shading_texture_with_phong() function to calculate the Phong shading color with the three point lights.
 /////////////////////////////////////////////////////
 
-vec4 shading_texture_with_normal_mapping()
-{
+vec4 shading_texture_with_normal_mapping() {
     vec3 e = position.xyz;              //// eye position
     vec3 p = vtx_position;              //// surface position
 
@@ -238,21 +233,20 @@ vec4 shading_texture_with_normal_mapping()
     vec3 perturbed_normal = vec3(0.0);  //// perturbed normal
 
     /* your implementation starts */
-    
-
+    vec3 B = calc_bitangent(N, T);                  // Step 1: Calculate Bitangent
+    mat3 TBN = calc_TBN_matrix(T, B, N);           // Step 2: Calculate TBN Matrix
+    vec3 tex_normal = read_normal_texture();        // Step 3: Read Normal from Texture
+    perturbed_normal = calc_perturbed_normal(TBN, tex_normal); // Step 4: Calculate Perturbed Normal
     /* your implementation ends */
 
-    vec4 color = shading_texture_with_phong(light1, e, p, light1.position, perturbed_normal)
-               + shading_texture_with_phong(light2, e, p, light2.position, perturbed_normal)
-               + shading_texture_with_phong(light3, e, p, light3.position, perturbed_normal);
+    vec4 color = shading_texture_with_phong(light1, e, p, light1.position, perturbed_normal) + shading_texture_with_phong(light2, e, p, light2.position, perturbed_normal) + shading_texture_with_phong(light3, e, p, light3.position, perturbed_normal);
     return color;
 }
 
-void main() 
-{
+void main() {
     //// Step 1: Visualize UV Coordinates with Checkerboard
     //// Your task is to implement the shading_texture_with_checkerboard() function
-    frag_color = shading_texture_with_checkerboard();
+    // frag_color = shading_texture_with_checkerboard();
 
     //// Step 2: Read Color from Texture Sampler
     //// Your task is to implement the shading_texture_with_color() function
@@ -268,5 +262,5 @@ void main()
     //// Your tasks are to implement the five functions as mentioned below that are used to calcuate perturbed normal vector in the shading_texture_with_normal_mapping() function: 
     //// (1) calc_bitangent(), (2) calc_TBN_matrix(), (3) read_normal_texture(), (4) calc_perturbed_normal(), and (5) shading_texture_with_normal_mapping()
     //// Uncomment the following line to call the function (you might also need to comment out previous lines that assign frag_color)
-    // frag_color = shading_texture_with_normal_mapping();
+    frag_color = shading_texture_with_normal_mapping();
 }

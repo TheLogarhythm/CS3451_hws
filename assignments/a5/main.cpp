@@ -24,9 +24,14 @@
 #define CLOCKS_PER_SEC 100000
 #endif
 
-enum class TexType:int{Color=0, Normal=1};
+enum class TexType : int
+{
+    Color = 0,
+    Normal = 1
+};
 
-class ShaderDriver : public OpenGLViewer {
+class ShaderDriver : public OpenGLViewer
+{
     std::vector<OpenGLTriangleMesh *> mesh_object_array;
     clock_t startTime;
 
@@ -59,7 +64,7 @@ public:
             Add_Textture_For_Mesh_Object(sphere, "earth_color.png", TexType::Color);
             Add_Textture_For_Mesh_Object(sphere, "earth_normal.png", TexType::Normal);
         }
-        
+
         //// initialize bunny
         {
             //// initialize mesh
@@ -88,23 +93,42 @@ public:
 
     void Create_Old_Object_Scene()
     {
-        Create_Background(OpenGLColor(0.1f, 0.1f, 0.1f, 1.f), OpenGLColor(0.1f, 0.1f, .3f, 1.f));   //// add background
+        Create_Background(OpenGLColor(0.1f, 0.1f, 0.1f, 1.f), OpenGLColor(0.1f, 0.1f, .3f, 1.f)); //// add background
 
-        //// Step 5: Add your customized mesh objects and specify their transform, material, and texture properties by mimicking Create_Bunny_Scene() 
+        //// Step 5: Add your customized mesh objects and specify their transform, material, and texture properties by mimicking Create_Bunny_Scene()
         /* Your implementation starts */
+        auto hydrant = Add_Obj_Mesh_Object("hydrant.obj");
+        hydrant->name = "hydrant"; //// Must set name for the object
 
+        // initialize transform
+        Matrix4f t;
+        t << 0.04, 0, 0, 0,
+            0, 0.04, 0, -2,
+            0, 0, 0.04, 0,
+            0, 0, 0, 1;
+        hydrant->Set_Model_Matrix(t);
+
+        // initailize material, red color
+        hydrant->Set_Ka(Vector3f(0.1, 0.1, 0.1));
+        hydrant->Set_Kd(Vector3f(0.7, 0.1, 0.1));
+        hydrant->Set_Ks(Vector3f(2., 2., 2.));
+        hydrant->Set_Shininess(128.);
+
+        Add_Textture_For_Mesh_Object(hydrant, "hydrant_color.jpg", TexType::Color);
+        Add_Textture_For_Mesh_Object(hydrant, "hydrant_normal.png", TexType::Normal);
         /* Your implementation ends */
     }
 
-    virtual void Initialize_Data() 
+    virtual void Initialize_Data()
     {
-        Create_Bunny_Scene();           //// TODO: comment out this line for your customized scene
-        // Create_Old_Object_Scene();   //// TODO: uncomment this line for your customized scene
+        // Create_Bunny_Scene(); //// TODO: comment out this line for your customized scene
+        Create_Old_Object_Scene(); //// TODO: uncomment this line for your customized scene
 
         ////initialize shader
         OpenGLShaderLibrary::Instance()->Add_Shader_From_File("a5_vert.vert", "a5_frag.frag", "a5_shader");
         ////bind the shader with each mesh object in the object array
-        for (auto& mesh_obj : mesh_object_array) {
+        for (auto &mesh_obj : mesh_object_array)
+        {
             mesh_obj->Add_Shader_Program(OpenGLShaderLibrary::Get_Shader("a5_shader"));
             std::cout << "mesh_obj->name: " << mesh_obj->name << std::endl;
             mesh_obj->Add_Texture("tex_color", OpenGLTextureLibrary::Get_Texture(mesh_obj->name + "_color"));
@@ -116,21 +140,21 @@ public:
         }
     }
 
-    virtual void Initialize() 
+    virtual void Initialize()
     {
         draw_axes = false;
         startTime = clock();
         OpenGLViewer::Initialize();
     }
 
-    void Create_Background(const OpenGLColor color1 = OpenGLColor::Black(), const OpenGLColor color2 = OpenGLColor(.01f, .01f, .2f, 1.f)) 
+    void Create_Background(const OpenGLColor color1 = OpenGLColor::Black(), const OpenGLColor color2 = OpenGLColor(.01f, .01f, .2f, 1.f))
     {
         auto bg = Add_Interactive_Object<OpenGLBackground>();
         bg->Set_Color(color1, color2);
         bg->Initialize();
     }
 
-    OpenGLTriangleMesh *Add_Obj_Mesh_Object(std::string obj_file_name) 
+    OpenGLTriangleMesh *Add_Obj_Mesh_Object(std::string obj_file_name)
     {
         auto mesh_obj = Add_Interactive_Object<OpenGLTriangleMesh>();
         Array<std::shared_ptr<TriangleMesh<3>>> meshes;
@@ -144,7 +168,7 @@ public:
         return mesh_obj;
     }
 
-    void Add_Textture_For_Mesh_Object(OpenGLTriangleMesh *obj ,const std::string &texture_file_name, TexType type) 
+    void Add_Textture_For_Mesh_Object(OpenGLTriangleMesh *obj, const std::string &texture_file_name, TexType type)
     {
         if (type == TexType::Color)
             OpenGLTextureLibrary::Instance()->Add_Texture_From_File(texture_file_name, obj->name + "_color");
@@ -153,20 +177,20 @@ public:
     }
 
     //// Go to next frame
-    virtual void Toggle_Next_Frame() 
+    virtual void Toggle_Next_Frame()
     {
         for (auto &mesh_obj : mesh_object_array)
             mesh_obj->setTime(GLfloat(clock() - startTime) / CLOCKS_PER_SEC);
         OpenGLViewer::Toggle_Next_Frame();
     }
 
-    virtual void Run() 
+    virtual void Run()
     {
         OpenGLViewer::Run();
     }
 };
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
     ShaderDriver driver;
     driver.Initialize();

@@ -1,11 +1,10 @@
-// #define Terrain 1		/* Uncomment this macro for Step II */
+#define Terrain 1		/* Uncomment this macro for Step II */
 
-struct Light 
-{
-    vec3 position;          /* light position */
-    vec3 Ia;                /* ambient intensity */
-    vec3 Id;                /* diffuse intensity */
-    vec3 Is;                /* specular intensity */     
+struct Light {
+	vec3 position;          /* light position */
+	vec3 Ia;                /* ambient intensity */
+	vec3 Id;                /* diffuse intensity */
+	vec3 Is;                /* specular intensity */     
 };
 
 uniform vec3 ka;            /* object material ambient */
@@ -22,16 +21,18 @@ uniform float shininess;    /* object material shininess */
 //// You implementation does not need to match the reference results.
 /////////////////////////////////////////////////////
 
-vec2 hash2(vec2 v)
-{
-	vec2 rand = vec2(0,0);
-	
+vec2 hash2(vec2 v) {
+	vec2 rand = vec2(0, 0);
+
 	/* Your implementation starts */
 
 	// Provided defulat implementation
-	// rand  = 52.5 * fract(v.yx * 0.31 + vec2(0.31, 0.113));
-    // rand = -1.0 + 3.1 * fract(rand.x * rand.y * rand.yx);
-	
+	// rand = 52.5 * fract(v.yx * 0.31 + vec2(0.31, 0.113));
+	// rand = -1.0 + 3.1 * fract(rand.x * rand.y * rand.yx);
+
+	// My implementation
+	rand = fract(sin(vec2(dot(v, vec2(11.4, 51.4)), dot(v, vec2(19.19, 0.81)))) * 114.514);
+	rand = rand - 1.0 + 8.136 * fract(rand.x * rand.y * rand.yx);
 	/* Your implementation ends */
 
 	return rand;
@@ -44,17 +45,24 @@ vec2 hash2(vec2 v)
 //// You will use i and f to compute the Perlin noise at point p and return it as noise.
 /////////////////////////////////////////////////////
 
-float perlin_noise(vec2 p) 
-{
-    float noise = 0.0;
+float perlin_noise(vec2 p) {
+	float noise = 0.0;
 	vec2 i = floor(p);
-    vec2 f = fract(p);
-	
-	/* Your implementation starts */
-    
+	vec2 f = fract(p);
 
+	/* Your implementation starts */
+	vec2 s = f * f * (3.0 - 2.0 * f);
+	vec2 g00 = hash2(i);
+	vec2 g10 = hash2(i + vec2(1.0, 0.0));
+	vec2 g01 = hash2(i + vec2(0.0, 1.0));
+	vec2 g11 = hash2(i + vec2(1.0, 1.0));
+	vec2 f00 = f - vec2(0.0, 0.0);
+	vec2 f10 = f - vec2(1.0, 0.0);
+	vec2 f01 = f - vec2(0.0, 1.0);
+	vec2 f11 = f - vec2(1.0, 1.0);
+	noise = mix(mix(dot(f00, g00), dot(f10, g10), s.x), mix(dot(f01, g01), dot(f11, g11), s.x), s.y);
 	/* Your implementation ends */
-	
+
 	return noise;
 }
 
@@ -66,15 +74,17 @@ float perlin_noise(vec2 p)
 //// The octave number num must be greater than 0.
 /////////////////////////////////////////////////////
 
-float noise_octave(vec2 p, int num)
-{
+float noise_octave(vec2 p, int num) {
 	float sum = 0;
-	
-	/* Your implementation starts */
 
-	
+	/* Your implementation starts */
+	for(int i = 0; i < num; i++) {
+		float frequency = pow(2.0, float(i));
+		float amplitude = pow(0.5, float(i));
+		sum += amplitude * perlin_noise(p * frequency);
+	}
 	/* Your implementation ends */
-	
+
 	return sum;
 }
 
@@ -88,18 +98,21 @@ float noise_octave(vec2 p, int num)
 //// In the starter code, we provide our default implementation for your reference.
 /////////////////////////////////////////////////////
 
-float height(vec2 v)
-{
-    float h = 0;
-	
+float height(vec2 v) {
+	float h = 0;
+
 	/* Your implementation starts */
-	
+
 	// Provided default implementation
 	// h = 0.75 * noise_octave(v, 10);
-	// if(h<0) h *= .5;
-	
+	// if(h < 0)
+	// 	h *= .5;
+
+	// My implementation, steep mountains with flat tops
+	h = sqrt(abs(noise_octave(v * 1.5, 8)));
+
 	/* Your implementation ends */
-	
+
 	return h;
 }
 
@@ -111,15 +124,18 @@ float height(vec2 v)
 //// This function will be called in shading_terrain to calculate the normal vector to be used in the shading model.
 /////////////////////////////////////////////////////
 
-vec3 compute_normal(vec2 v, float d)
-{	
-	vec3 normal_vector = vec3(0,0,0);
-	
-	/* Your implementation starts */
+vec3 compute_normal(vec2 v, float d) {
+	vec3 normal_vector = vec3(0, 0, 0);
 
-	
+	/* Your implementation starts */
+	vec3 v1 = vec3(v.x + d, v.y, height(v + vec2(d, 0.0)));
+	vec3 v2 = vec3(v.x - d, v.y, height(v + vec2(-d, 0.0)));
+	vec3 v3 = vec3(v.x, v.y + d, height(v + vec2(0.0, d)));
+	vec3 v4 = vec3(v.x, v.y - d, height(v + vec2(0.0, -d)));
+
+	normal_vector = normalize(cross(v1 - v2, v3 - v4));
 	/* Your implementation ends */
-	
+
 	return normal_vector;
 }
 
@@ -140,21 +156,26 @@ vec3 compute_normal(vec2 v, float d)
 //// n: normal at the point
 /////////////////////////////////////////////////////
 
-vec4 shading_phong(Light light, vec3 e, vec3 p, vec3 s, vec3 n) 
-{
-	vec4 color=vec4(0.0,0.0,0.0,1.0);
-	
+vec4 shading_phong(Light light, vec3 e, vec3 p, vec3 s, vec3 n) {
+	vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+
     /* your implementation starts */
-    
-    
+	vec3 l = normalize(s - p); // Light direction
+	vec3 v = normalize(e - p); // View direction
+	vec3 r = reflect(-l, normalize(n));   // Reflection direction
+
+	vec3 ambient = light.Ia * ka;
+	vec3 diffuse = light.Id * kd * max(dot(n, l), 0.0);
+	vec3 specular = light.Is * ks * pow(max(dot(r, v), 0.0), shininess);
+
+	color = vec4(ambient + diffuse + specular, 1.0);
 	/* your implementation ends */
-	
+
 	return color;
 }
 
 //// shade the noise function 
-vec3 shading_noise(vec3 p) 
-{
+vec3 shading_noise(vec3 p) {
 	float h = 0.5 + 0.5 * (noise_octave(p.xy, 4));
 	return vec3(h, h, h);
 }
@@ -166,12 +187,11 @@ vec3 shading_noise(vec3 p)
 //// You are asked to implement your own version to calculate natural colors for your customized scene
 /////////////////////////////////////////////////////
 
-vec3 shading_terrain(vec3 pos) 
-{
+vec3 shading_terrain(vec3 pos) {
 	const Light light = Light(vec3(3, 1, 3), vec3(1, 1, 1), vec3(2, 2, 2), vec3(1, 1, 1));
 
 	//// calculate Phong shading color with normal
-	
+
 	vec3 n = compute_normal(pos.xy, 0.01);
 	vec3 e = position.xyz;
 	vec3 p = pos.xyz;
@@ -179,15 +199,30 @@ vec3 shading_terrain(vec3 pos)
 	vec3 phong_color = shading_phong(light, e, p, s, n).xyz;
 
 	//// calculate emissive color
-	vec3 emissive_color = vec3(0.0,0.0,0.0);
-	
+	vec3 emissive_color = vec3(0.0, 0.0, 0.0);
+
 	/* your implementation starts */
-	
-	// Provided default implementation
+
+	// // Provided default implementation
 	// float h = pos.z + .8;
 	// h = clamp(h, 0.0, 1.0);
-	// emissive_color = mix(vec3(.4,.6,.2), vec3(.4,.3,.2), h);
+	// emissive_color = mix(vec3(.4, .6, .2), vec3(.4, .3, .2), h);
 
+	// My implementation
+	float h = pos.z + 0.15;
+	h = clamp(h, 0.0, 1.0);
+
+	vec3 base_color = vec3(0.18, 0.14, 0.09);      // Dark brown/gray rock
+	vec3 mid_color = vec3(0.5, 0.4, 0.35);       // Medium brown rock
+	vec3 snow_color = vec3(0.95, 0.95, 1.0);     // White snow
+
+	if(h < 0.5) {
+        // Lower elevations
+		emissive_color = mix(base_color, mid_color, h * 2.0);
+	} else {
+        // Higher elevations
+		emissive_color = mix(mid_color, snow_color, (h - 0.5) * 2.0);
+	}
 	/* your implementation ends */
 
 	return phong_color * emissive_color;

@@ -18,52 +18,45 @@ vec3 sampleDiffuse(int matId, vec3 p);
 //// Primitive data types
 /////////////////////////////////////////////////////
 
-struct Camera 
-{
+struct Camera {
     vec3 origin;                    /* eye position */
     vec3 horizontal;                /* camera-x axis */
     vec3 vertical;                  /* camera-y axis */
     vec3 LowerLeftCorner;           /* lower-left corner of the image */
 };
 
-struct Ray 
-{
+struct Ray {
     vec3 ori;                       /* ray origin */
     vec3 dir;                       /* ray direction */
 };
 
-struct Plane 
-{
+struct Plane {
     vec3 n;                         /* plane normal */
     vec3 p;                         /* plane point (a point that is on the plane) */
     int matId;                      /* plane material ID */
 };
 
-struct Sphere 
-{
+struct Sphere {
     vec3 ori;                       /* sphere origin */
     float r;                        /* sphere radius */
     int matId;                      /* sphere material ID */
 };
 
-struct Hit 
-{
+struct Hit {
     float t;                        /* ray parameter t for the intersect */
     vec3 p;                         /* intersect position */
     vec3 normal;                    /* intersect normal */
     int matId;                      /* intersect object's material ID */
 };
 
-struct Light 
-{
+struct Light {
     vec3 position;                  /* light position */
     vec3 Ia;                        /* ambient intensity */
     vec3 Id;                        /* diffuse intensity */
     vec3 Is;                        /* specular intensity */     
 };
 
-struct Material 
-{
+struct Material {
     vec3 ka;                        /* ambient coefficient */
     vec3 kd;                        /* diffuse coefficient */
     vec3 ks;                        /* reflected specular coefficient */
@@ -77,25 +70,21 @@ struct Material
 
 float g_seed = 0.;
 
-float deg2rad(float deg) 
-{
+float deg2rad(float deg) {
     return deg * M_PI / 180.0;
 }
 
-uint base_hash(uvec2 p) 
-{
+uint base_hash(uvec2 p) {
     p = 1103515245U * ((p >> 1U) ^ (p.yx));
     uint h32 = 1103515245U * ((p.x) ^ (p.y >> 3U));
     return h32 ^ (h32 >> 16);
 }
 
-void initRand(in vec2 frag_coord, in float time) 
-{
+void initRand(in vec2 frag_coord, in float time) {
     g_seed = float(base_hash(floatBitsToUint(frag_coord))) / float(0xffffffffU) + time;
 }
 
-vec2 rand2(inout float seed) 
-{
+vec2 rand2(inout float seed) {
     uint n = base_hash(floatBitsToUint(vec2(seed += .1, seed += .1)));
     uvec2 rz = uvec2(n, n * 48271U);
     return vec2(rz.xy & uvec2(0x7fffffffU)) / float(0x7fffffff);
@@ -125,8 +114,7 @@ const Hit noHit = Hit(
 //// Default scene setup
 /////////////////////////////////////////////////////
 
-void initScene() 
-{
+void initScene() {
     camera = Camera(vec3(0, 15, 50), vec3(5, 0, 0), vec3(0, 3, -3), vec3(-2.5, -1.5, -1));
 
     // Floor Material 
@@ -183,27 +171,26 @@ void initScene()
 //// You will need to implement this by yourself in the ray-sphere intersection function.
 /////////////////////////////////////////////////////
 
-Hit hitPlane(const Ray r, const Plane pl) 
-{
+Hit hitPlane(const Ray r, const Plane pl) {
     Hit hit = noHit;
 
     /* default implementation starts */
-    
-    //// uncomment the following lines and run the code
 
-    // float t = dot(pl.p - r.ori, pl.n) / dot(r.dir, pl.n);
+    // uncomment the following lines and run the code
 
-    // if(t <= 0.0) 
-    //    return noHit;
+    float t = dot(pl.p - r.ori, pl.n) / dot(r.dir, pl.n);
 
-    // vec3 hitP = r.ori + t * r.dir;
-    // vec3 normal = pl.n;
+    if(t <= 0.0)
+        return noHit;
 
-    // hit = Hit(t, hitP, normal, pl.matId);
+    vec3 hitP = r.ori + t * r.dir;
+    vec3 normal = pl.n;
+
+    hit = Hit(t, hitP, normal, pl.matId);
 
     /* default implementation ends */
-    
-	return hit;
+
+    return hit;
 }
 
 /////////////////////////////////////////////////////
@@ -215,15 +202,31 @@ Hit hitPlane(const Ray r, const Plane pl)
 //// If t is greater than zero, use its value to calculate hitP and normal, and assemble hit; Otherwise return noHit
 /////////////////////////////////////////////////////
 
-Hit hitSphere(const Ray r, const Sphere s) 
-{
+Hit hitSphere(const Ray r, const Sphere s) {
     Hit hit = noHit;
-	
-    /* your implementation starts */
 
+    /* your implementation starts */
+    vec3 l = s.ori - r.ori;
+    float A = dot(r.dir, r.dir);
+    float B = -2.0 * dot(l, r.dir);
+    float C = dot(l, l) - s.r * s.r;
+
+    float discriminant = B * B - 4.0 * A * C;
+    if(discriminant < 0.0) {
+        return noHit;
+    }
+
+    float sqrt_discriminant = sqrt(discriminant);
+    float t1 = (-B - sqrt_discriminant) / (2.0 * A);
+    float t2 = (-B + sqrt_discriminant) / (2.0 * A);
+
+    if(t1 < 0)
+        return noHit;
+
+    hit = Hit(t1, r.ori + t1 * r.dir, normalize((r.ori + t1 * r.dir) - s.ori), s.matId);
 	/* your implementation ends */
-    
-	return hit;
+
+    return hit;
 }
 
 /////////////////////////////////////////////////////
@@ -233,16 +236,15 @@ Hit hitSphere(const Ray r, const Sphere s)
 //// There is no implementation requirement for this function; but you will need to call this function in your future implementation
 /////////////////////////////////////////////////////
 
-Hit findHit(Ray r) 
-{
+Hit findHit(Ray r) {
     Hit h = noHit;
-	
-	for(int i = 0; i < spheres.length(); i++) {
+
+    for(int i = 0; i < spheres.length(); i++) {
         Hit tempH = hitSphere(r, spheres[i]);
         if(tempH.t > Epsilon && (h.t < 0. || h.t > tempH.t))
             h = tempH;
     }
-	
+
     for(int i = 0; i < planes.length(); i++) {
         Hit tempH = hitPlane(r, planes[i]);
         if(tempH.t > Epsilon && (h.t < 0. || h.t > tempH.t))
@@ -259,21 +261,32 @@ Hit findHit(Ray r)
 //// You are allowed to reuse the code you have implemented previously
 /////////////////////////////////////////////////////
 
-vec3 shadingPhong(Light light, int matId, vec3 e, vec3 p, vec3 s, vec3 n) 
-{
+vec3 shadingPhong(Light light, int matId, vec3 e, vec3 p, vec3 s, vec3 n) {
 	//// default color: return dark red for the ground and dark blue for spheres
-    vec3 color = matId == 0 ? vec3(0.2, 0, 0) : vec3(0, 0, 0.3);
+    // vec3 color = matId == 0 ? vec3(0.2, 0, 0) : vec3(0, 0, 0.3);
+    vec3 color = sampleDiffuse(matId, p);  /* get the material color (with texture mapping if any) */
 
     vec3 ka = materials[matId].ka;
     vec3 kd = materials[matId].kd;
     vec3 ks = materials[matId].ks;
     float shininess = materials[matId].shininess;
-    
+
     /* your implementation starts */
-	
+    vec3 l = normalize(s - p);    // Light direction
+    vec3 v = normalize(e - p);    // View direction
+    vec3 r = reflect(-l, n);   // Reflection direction
+
+    vec3 ambient = light.Ia * ka;
+
+    // vec3 diffuse = light.Id * kd * max(dot(n, l), 0.0);
+    vec3 diffuse = light.Id * color * max(dot(n, l), 0.0);
+
+    vec3 specular = light.Is * ks * pow(max(dot(r, v), 0.0), shininess);
+
+    color = vec3(ambient + diffuse + specular);
 	/* your implementation ends */
-    
-	return color;
+
+    return color;
 }
 
 /////////////////////////////////////////////////////
@@ -282,23 +295,22 @@ vec3 shadingPhong(Light light, int matId, vec3 e, vec3 p, vec3 s, vec3 n)
 //// and (2) multiply the texture color with its material color and assign the multiplication value to the returned color.
 /////////////////////////////////////////////////////
 
-vec3 sampleDiffuse(int matId, vec3 p) 
-{
+vec3 sampleDiffuse(int matId, vec3 p) {
     vec3 mat_color = materials[matId].kd;   /* material color */
     vec3 color = mat_color;                 /* color to be returned */
 
     /* apply texture for the ground */
-    if(matId == 0) {		
-		vec2 uv = vec2(p.x, p.z) / 5.0;     /* uv texture on the ground */
+    if(matId == 0) {
+        vec2 uv = vec2(p.x, p.z) / 5.0;     /* uv texture on the ground */
 
         /* your implementation starts */
-        
-        
+        vec3 texture_color = texture(floor_color, uv).xyz;   /* read the texture color using uv */
+        color = mat_color * texture_color;              
 		/* your implementation ends */
     }
 
     /* no texture for the spheres */
-    
+
     return color;
 }
 
@@ -311,20 +323,23 @@ vec3 sampleDiffuse(int matId, vec3 p)
 //// (e.g., using the Epsilon we deleared in the shader) to avoid any self-intersection
 /////////////////////////////////////////////////////
 
-bool isShadowed(Light light, Hit h) 
-{
+bool isShadowed(Light light, Hit h) {
     bool shadowed = false;                          /* returned boolean to indicate if there is shadow or not */
-	vec3 intersect = h.p;                           /* hit intersect */
-	vec3 toLight = light.position-intersect;        /* vector pointing from the shadow ray origin to the light */
-	float t_max = length(toLight);                  /* length of toLight */
-	vec3 dir = normalize(toLight);                  /* direction of toLight */
-	
+    vec3 intersect = h.p;                           /* hit intersect */
+    vec3 toLight = light.position - intersect;        /* vector pointing from the shadow ray origin to the light */
+    float t_max = length(toLight);                  /* length of toLight */
+    vec3 dir = normalize(toLight);                  /* direction of toLight */
+
     /* your implementation starts */
-	
-    
+    Ray shadowRay = Ray(intersect + 0.001 * dir, dir);   /* create the shadow ray */
+    Hit shadowHit = findHit(shadowRay);                    /* find the intersection of the shadow ray with the scene */
+    if(shadowHit.t > 0 && shadowHit.t < t_max)
+        return true;
+    else
+        return false;
 	/* your implementation ends */
-    
-	return shadowed;
+
+    return shadowed;
 }
 
 /////////////////////////////////////////////////////
@@ -332,8 +347,7 @@ bool isShadowed(Light light, Hit h)
 //// No implementation is required for this function
 /////////////////////////////////////////////////////
 
-Ray getPrimaryRay(vec2 uv) 
-{
+Ray getPrimaryRay(vec2 uv) {
     return Ray(camera.origin, camera.LowerLeftCorner + uv.x * camera.horizontal + uv.y * camera.vertical - camera.origin);
 }
 
@@ -343,8 +357,7 @@ Ray getPrimaryRay(vec2 uv)
 //// No implementation is required for this function
 /////////////////////////////////////////////////////
 
-vec3 rayTrace(in Ray r, out Hit hit) 
-{
+vec3 rayTrace(in Ray r, out Hit hit) {
     vec3 col = vec3(0);
     Hit h = findHit(r);
     hit = h;
@@ -372,22 +385,19 @@ vec3 rayTrace(in Ray r, out Hit hit)
 
 /* your implementation starts */
 
-const int recursiveDepth = 1;
+const int recursiveDepth = 50;
 
 /* your implementation ends */
 
-
-void main() 
-{
+void main() {
     initScene();
-    initRand(fragCoord, iTime);             
+    initRand(fragCoord, iTime);
     vec2 uv = fragCoord / iResolution.xy;
     vec3 compounded_kr = vec3(1.0);     /* cumulative reflection coefficient */
 
-
     vec3 resultCol = vec3(0);
     Ray recursiveRay = getPrimaryRay(uv + rand2(g_seed) / iResolution.xy);
-	
+
     for(int i = 0; i < recursiveDepth; i++) {
         Hit hit;
         vec3 col = rayTrace(recursiveRay, hit);
@@ -398,24 +408,25 @@ void main()
             break;
 
         compounded_kr *= materials[hit.matId].kr;
-		
+
         /////////////////////////////////////////////////////
         //// Step 6.II: Calculate the reflected ray and assign it to recursiveRay for the next loop
         //// You are asked to calculate the reflected ray based on the current ray direction and intersect
         //// You need to (1) calculate the reflected ray direction (store the value in relfected_dir) and 
         //// (2) use this reflected direction along with the intersecting point to calculate the recursive ray for the next loop
         /////////////////////////////////////////////////////
-        
+
         vec3 intersect = hit.p;
         vec3 normal = hit.normal;
         vec3 incoming_dir = recursiveRay.dir;
         vec3 reflected_dir = vec3(0);           /* calculate the reflected dir */
 
 		/* your implementation starts */
-        
+        reflected_dir = reflect(incoming_dir, normal);
+        recursiveRay = Ray(intersect + Epsilon * reflected_dir, reflected_dir);
 		/* your implementation ends */
     }
-	
+
     // Temporal AA
     fragColor = vec4((resultCol + float(iFrame - 1) * texture(bufferTexture, uv).xyz) / float(iFrame), 1.);
 }
